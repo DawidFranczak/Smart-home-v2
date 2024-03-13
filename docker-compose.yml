@@ -1,0 +1,36 @@
+﻿services:
+  postgresql:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: smart_home
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    ports:
+      - 5432:5432
+    container_name: postgresql_db_smarthome
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      db-url: jdbc:postgresql://postgresql:5432/smart_home
+      db-username: root
+      db-password: root
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgresql
+    container_name: backend_smarthome
+
+  # frontend:
+  #   build:
+  #     context: ../frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+  #   container_name: frontend_smarthome
+
