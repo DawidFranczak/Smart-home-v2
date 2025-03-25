@@ -1,36 +1,61 @@
-﻿services:
-  postgresql:
+version: "3.8"
+
+services:
+  postgres:
     image: postgres
-    restart: always
     environment:
-      POSTGRES_DB: smart_home
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     ports:
-      - 5432:5432
-    container_name: postgresql_db_smarthome
+      - "5432:5432"
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
 
   backend:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-    environment:
-      db-url: jdbc:postgresql://postgresql:5432/smart_home
-      db-username: root
-      db-password: root
+    build: ./backend
+    command: daphne -b 0.0.0.0 -p 8000 smart_home.asgi:application
+    volumes:
+      - ./backend:/app
     ports:
-      - "8080:8080"
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
     depends_on:
-      - postgresql
-    container_name: backend_smarthome
+      - postgres
+      - redis
 
-  # frontend:
-  #   build:
-  #     context: ../frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - backend
-  #   container_name: frontend_smarthome
+  celery:
+    build: ./backend
+    command: celery -A smart_home worker -l info --uid=10
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - postgres
+      - redis
+      - backend
 
+  celery-beat:
+    build: ./backend
+    command: celery -A smart_home beat -l info --uid=10
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - postgres
+      - redis
+      - backend
+      - celery
+
+volumes:
+  postgres_data:

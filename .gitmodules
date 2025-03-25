@@ -1,6 +1,12 @@
 [submodule "backend"]
 	path = backend
-	url = https://github.com/DawidFranczak/Smart-home-backend.git
+	url = https://github.com/DawidFranczak/smart-home-backend.git
 [submodule "frontend"]
 	path = frontend
-	url = https://github.com/DawidFranczak/Smart-home-frontend.git
+	url = https://github.com/DawidFranczak/smart-home-frontend.git
+[submodule "router"]
+	path = router
+	url = https://github.com/DawidFranczak/smart-home-router.git
+[submodule "devices"]
+	path = devices
+	url = https://github.com/DawidFranczak/smart-home-devices.git
