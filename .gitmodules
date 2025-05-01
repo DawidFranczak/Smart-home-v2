@@ -10,6 +10,6 @@
 [submodule "devices"]
 	path = devices
 	url = https://github.com/DawidFranczak/smart-home-devices.git
-[submodule "mobile-app"]
-	path = mobile-app
+[submodule "mobile_app"]
+	path = mobile_app
 	url = https://github.com/DawidFranczak/smart-home-mobile-app.git
