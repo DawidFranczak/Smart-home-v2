@@ -1,1 +1,5 @@
 .env
+backend
+devices
+frontend
+router
