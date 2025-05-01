@@ -12,4 +12,4 @@
 	url = https://github.com/DawidFranczak/smart-home-devices.git
 [submodule "mobile-app"]
 	path = mobile-app
-	url = https://github.com/DawidFranczak/smart-home-mobile-app
+	url = https://github.com/DawidFranczak/smart-home-mobile-app.git
