@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres
+    env_file:
+      - env/dev.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  backend:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS: ./requirements/dev.txt
+    command: sh -c " python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - env/dev.env
+    depends_on:
+      - postgres
+      - redis
+
+  celery:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS: ./requirements/dev.txt
+    command: celery -A smart_home worker -l info --uid=10
+    volumes:
+      - ./backend:/app
+    env_file:
+      - env/dev.env
+    depends_on:
+      - postgres
+      - redis
+      - backend
+
+  celery-beat:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS: ./requirements/dev.txt
+    command: >
+      sh -c "./wait-for-it.sh postgres:5432 -- 
+            ./wait-for-it.sh redis:6379 -- 
+            celery -A smart_home beat -l info"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - env/dev.env
+    depends_on:
+      - postgres
+      - redis
+      - backend
+      - celery
+
+  rtsp-to-web:
+    image: ghcr.io/deepch/rtsptoweb:latest
+    volumes:
+      - ./rtsp-config:/config
+    ports:
+      - "8083:8083"
+      - "5541:5541"
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    image: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - rtsp-to-web
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data: {}
