@@ -54,15 +54,6 @@ services:
       - backend
       - celery
 
-  rtsp-to-web:
-    image: ghcr.io/deepch/rtsptoweb:latest
-    volumes:
-      - ./rtsp-config:/config
-    ports:
-      - "8083:8083"
-      - "5541:5541"
-    restart: unless-stopped
-
   nginx:
     build:
       context: .
@@ -72,7 +63,6 @@ services:
       - "80:80"
     depends_on:
       - backend
-      - rtsp-to-web
     extra_hosts:
       - "host.docker.internal:host-gateway"
 volumes:
