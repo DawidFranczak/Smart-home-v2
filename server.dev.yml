@@ -1,0 +1,218 @@
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.10
+
+  db-backend:
+    image: postgres
+    env_file:
+      - env/db_backend.env
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.9
+  
+  db-sensor-service:
+    image: postgres
+    env_file:
+      - env/db_sensor_service.env
+    volumes:
+      - postgres_data_sensor_dev:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+        mynet:
+          ipv4_address: 172.155.0.8
+        
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+        mynet:
+          ipv4_address: 172.155.0.7
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS: ./requirements/dev.txt
+    command: sh -c " python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
+    environment: 
+      - PYTHONUNBUFFERED=1
+      - JWT_PRIVATE_KEY_PATH=/run/secrets/jwt_private_key
+      - JWT_PUBLIC_KEY_PATH=/run/secrets/jwt_public_key
+    env_file:
+      - env/dev.env
+    depends_on:
+      - db-backend
+      - redis
+      - rabbitmq
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.6
+
+  sensor_service:
+    build: ./sensor_service
+    command: "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - ./sensor_service:/app
+    ports:
+      - "8001:8000"
+    secrets:
+      - jwt_public_key
+    environment:
+      - PYTHONUNBUFFERED=1
+      - JWT_PUBLIC_KEY_PATH=/run/secrets/jwt_public_key
+    env_file:
+      - env/sensor_service.env
+    depends_on:
+      - db-sensor-service
+      - redis
+      - rabbitmq
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rabbitmq_data_dev:/var/lib/rabbitmq/mnesia
+      - ./rabbitmq/init.sh:/docker-entrypoint-init.d/init.sh:ro
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.4
+        
+  celery:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS: ./requirements/dev.txt
+    command: celery -A smart_home worker -Q default -l info -c 4 --uid=10 --hostname=default@%h --pool=solo
+    volumes:
+      - ./backend:/app
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
+    environment: 
+      - JWT_PRIVATE_KEY_PATH=/run/secrets/jwt_private_key
+      - JWT_PUBLIC_KEY_PATH=/run/secrets/jwt_public_key
+    env_file:
+      - env/dev.env
+    depends_on:
+      - db-backend
+      - redis
+      - backend
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.11
+
+  celery-ai:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS: ./requirements/dev.txt
+    command: celery -A smart_home worker -Q ai -l info -c 1 --uid=10 --hostname=ai@%h --pool=solo
+    env_file:
+      - env/prod.env
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
+    environment: 
+      - JWT_PRIVATE_KEY_PATH=/run/secrets/jwt_private_key
+      - JWT_PUBLIC_KEY_PATH=/run/secrets/jwt_public_key
+      - CELERY_QUEUE=ai
+      - HF_HOME=/app/huggingface
+    depends_on:
+      - db-backend
+      - redis
+      - backend
+    volumes:
+      - /home/dawid/.cache/huggingface/hub:/app/huggingface/hub
+      - /home/dawid/Pulpit/Smart-home-v2/models:/app/ai_assistance/models
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.12
+
+  celery-beat:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS: ./requirements/dev.txt
+    command: >
+      sh -c "./wait-for-it.sh postgres:5432 -- 
+            ./wait-for-it.sh redis:6379 -- 
+            celery -A smart_home beat -l info"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - env/dev.env
+    depends_on:
+      - db-backend
+      - redis
+      - backend
+      - celery
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.13
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    image: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.14
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.15
+
+networks:
+  mynet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.155.0.0/16
+
+secrets:
+  jwt_private_key:
+    file: ./secrets/private.pem
+  jwt_public_key:
+    file: ./secrets/public.pem
+
+volumes:
+  postgres_data_dev: {}
+  postgres_data_sensor_dev: {}
+  rabbitmq_data_dev: {}
