@@ -3,13 +3,14 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token <token>
+    env_file:
+      - env/cloudflared.env
+    command: cloudflared tunnel --no-autoupdate run --token ${TOKEN}
     depends_on:
       - nginx
     networks:
       mynet:
         ipv4_address: 172.155.0.100
-      
   mediamtx:
     image: bluenviron/mediamtx:latest
     volumes:
@@ -135,8 +136,8 @@ services:
       - redis
       - backend
     volumes:
-      - /home/halpiszony/.cache/huggingface/hub:/app/.cache/huggingface/hub
-      - /home/halpiszony/Desktop/apk/models:/app/ai_assistance/models
+      - ${HF_CACHE_DIR}:/app/.cache/huggingface/hub
+      - ${AI_MODELS_DIR}:/app/ai_assistance/models
     networks:
       mynet:
         ipv4_address: 172.155.0.12
