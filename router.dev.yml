@@ -1,0 +1,21 @@
+ services:
+   broker:
+     build:
+       context: ./mosquitto
+     volumes:
+       - ./mosquitto/data:/mosquitto/data/
+       - ./mosquitto/log:/mosquitto/log/
+     network_mode: "host"
+
+   router:
+    build: ./router
+    env_file:
+      - env/router_dev.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    network_mode: "host"
+    volumes:
+      - ./router:/app
+    depends_on:
+      - broker
+
