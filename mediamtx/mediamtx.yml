@@ -1,11 +1,9 @@
 logLevel: info
 
 hls: yes
-hlsVariant: lowLatency
 hlsAlwaysRemux: yes
-hlsSegmentDuration: 1s
-hlsPartDuration: 200ms
-hlsSegmentCount: 7
+hlsSegmentDuration: 10s
+hlsPartDuration: 2s
 
 paths:
   all: {}

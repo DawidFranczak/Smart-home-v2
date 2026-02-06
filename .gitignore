@@ -1,5 +1,14 @@
+.idea
+.vscode
 env
 backend
 devices
 frontend
 router
+postgres
+rabbitmq
+secrets
+models
+.env
+mosquitto/data
+mosquitto/log

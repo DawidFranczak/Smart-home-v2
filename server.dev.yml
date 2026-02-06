@@ -1,4 +1,14 @@
 services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel --no-autoupdate run --token ${TOKEN_DEV}
+    depends_on:
+      - nginx
+    networks:
+      mynet:
+        ipv4_address: 172.155.0.100
+ 
   mediamtx:
     image: bluenviron/mediamtx:latest
     volumes:
@@ -12,7 +22,7 @@ services:
     env_file:
       - env/db_backend.env
     volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
+      - postgres_data_dev:/var/lib/postgresql
     ports:
       - "5432:5432"
     networks:
@@ -24,7 +34,7 @@ services:
     env_file:
       - env/db_sensor_service.env
     volumes:
-      - postgres_data_sensor_dev:/var/lib/postgresql/data
+      - postgres_data_sensor_dev:/var/lib/postgresql
     ports:
       - "5433:5432"
     networks:
@@ -57,7 +67,8 @@ services:
       - JWT_PRIVATE_KEY_PATH=/run/secrets/jwt_private_key
       - JWT_PUBLIC_KEY_PATH=/run/secrets/jwt_public_key
     env_file:
-      - env/dev.env
+      - env/backend_dev.env
+      - env/db_backend.env
     depends_on:
       - db-backend
       - redis
@@ -80,6 +91,7 @@ services:
       - JWT_PUBLIC_KEY_PATH=/run/secrets/jwt_public_key
     env_file:
       - env/sensor_service.env
+      - env/db_sensor_service.env
     depends_on:
       - db-sensor-service
       - redis
@@ -115,7 +127,7 @@ services:
       - JWT_PRIVATE_KEY_PATH=/run/secrets/jwt_private_key
       - JWT_PUBLIC_KEY_PATH=/run/secrets/jwt_public_key
     env_file:
-      - env/dev.env
+      - env/backend_dev.env
     depends_on:
       - db-backend
       - redis
@@ -131,7 +143,7 @@ services:
         REQUIREMENTS: ./requirements/dev.txt
     command: celery -A smart_home worker -Q ai -l info -c 1 --uid=10 --hostname=ai@%h --pool=solo
     env_file:
-      - env/prod.env
+      - env/backend_dev.env
     secrets:
       - jwt_private_key
       - jwt_public_key
@@ -145,8 +157,8 @@ services:
       - redis
       - backend
     volumes:
-      - ${HF_CACHE_DIR}:/app/.cache/huggingface/hub
-      - ${AI_MODELS_DIR}:/app/ai_assistance/models
+      - ${HF_CACHE_DIR_DEV}:/app/.cache/huggingface/hub
+      - ${AI_MODELS_DIR_DEV}:/app/ai_assistance/models
     networks:
       mynet:
         ipv4_address: 172.155.0.12
@@ -163,7 +175,7 @@ services:
     volumes:
       - ./backend:/app
     env_file:
-      - env/dev.env
+      - env/backend_dev.env
     depends_on:
       - db-backend
       - redis

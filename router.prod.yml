@@ -2,12 +2,15 @@ services:
   broker:
     image: nietwid/mqtt-broker
     network_mode: "host"
+    restart: unless-stopped
+      
 
   router:
     image: nietwid/smart-home-router
     env_file:
       - env/router_prod.env
     network_mode: "host"
+    restart: unless-stopped
     depends_on:
       - broker
 
