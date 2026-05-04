@@ -48,4 +48,4 @@ The main idea is that you have a small hub (like a Raspberry Pi) in your house t
 *   **DevOps:** Docker, Docker Compose, Environment-based configuration (.env)
 
 ##  Architecture
-![architecture.png](readme/architecture.png)
+![architecture.png](readme/architecture_v2.png)
